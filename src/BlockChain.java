@@ -10,7 +10,6 @@ public class BlockChain {
 
     private Vector _blocks= new Vector(); //We'll have max 20 block nodes
     private TransactionPool _globTxnPool= new TransactionPool();
-    private UTXOPool _utxoPool= new UTXOPool();
     
     /**
      * create an empty block chain with just a genesis block. Assume {@code genesisBlock} is a valid
@@ -25,7 +24,7 @@ public class BlockChain {
     	//If there are multiple blocks at the same height, return the oldest block 
     	//With our blocks array therefore, lower index means earlier block!
     	
-    	//Inefficient but ok for now:
+    	//Inefficcient but ok for now:
     	//Step1 find the max block height
     	int maxBlockHeight= -1; //bcos if all blocks are empty, still need to return first block
         for (int i= 0; i < _blocks.size(); i++) {
@@ -50,9 +49,21 @@ public class BlockChain {
 
     /** Get the UTXOPool for mining a new block on top of max height block */
     public UTXOPool getMaxHeightUTXOPool() {
-    	return _utxoPool;
+    	UTXOPool pool= new UTXOPool();
+    	ArrayList txns= getMaxHeightBlock().getTransactions();
+    	for (int i=0; i < txns.size(); i++) {
+    		Transaction txn= (Transaction) txns.get(i);
+    		ArrayList outputs= txn.getOutputs();
+    		for (int j=0; j < outputs.size(); j++) {
+    			Transaction.Output o= (Transaction.Output) outputs.get(j);
+    			UTXO utxo = new UTXO(txn.getHash(),j);
+    			pool.addUTXO(utxo, o);
+    		}
+    	}
+    	
+    	return pool;
     }
-    
+
     /** Get the transaction pool to mine a new block */
     public TransactionPool getTransactionPool() {
     	return _globTxnPool;
@@ -81,13 +92,10 @@ public class BlockChain {
     		return false;
     	}
     	
-    	TxHandler txHandler= new TxHandler(_utxoPool);
-
     	ArrayList<Transaction> block_txns= block.getTransactions();
     	for (int i=0; i < block_txns.size(); i++) {
     		Transaction block_txn= block.getTransaction(i);
-    		_globTxnPool.removeTransaction(block_txn.getHash()); //even if invalid txn, remove from mempool
-    		if (! txHandler.isValidTx(block_txn) ) return false;
+    		_globTxnPool.removeTransaction(block_txn.getHash());
     	}
     	return true;
     }
@@ -99,14 +107,6 @@ public class BlockChain {
 		created.
      */
     public void addTransaction(Transaction tx) {
-    	//Remove inputs from UTXO, Add outputs to utxo
-    	ArrayList<Transaction.Input> inputs= tx.getInputs();
-    	for (int i = 0; i < inputs.size(); i++) {
-    		Transaction.Input in = (Transaction.Input) inputs.get(i);
-    		UTXO uu= new UTXO(in.prevTxHash, in.outputIndex);
-    		_utxoPool.removeUTXO(uu);
-    	}
-
     	_globTxnPool.addTransaction(tx);
     }
 }
