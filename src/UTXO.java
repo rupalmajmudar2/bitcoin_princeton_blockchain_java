@@ -13,7 +13,8 @@ public class UTXO implements Comparable<UTXO> {
      * hash is {@code txHash}
      */
     public UTXO(byte[] txHash, int index) {
-        this.txHash = Arrays.copyOf(txHash, txHash.length);
+    	if (txHash==null) this.txHash= null;
+    	else this.txHash = Arrays.copyOf(txHash, txHash.length);
         this.index = index;
     }
 
