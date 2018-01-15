@@ -33,7 +33,7 @@ public class BlockChain {
         	if (blockHeight > maxBlockHeight) maxBlockHeight= blockHeight;
         }
         
-        //Step2 find _the first_ [hence oldest!] block which have that mac height
+        //Step2 find _the first_ [hence oldest!] block which have that max height
         
         for (int i= 0; i < _blocks.size(); i++) {
         	Block b= (Block) _blocks.elementAt(i);
@@ -88,9 +88,11 @@ public class BlockChain {
         // A new genesis block wont be mined. If you receive a block which claims to be a genesis block
     	//(parent is a null hash) in the addBlock(Block b) function, you can return false .
     	if (block.getPrevBlockHash() == null) {
-    		System.out.println("#addBlock got a Genesis Block. Ignore.");
+    		//System.out.println("#addBlock got a Genesis Block. Ignore.");
     		return false;
     	}
+    	
+    	_blocks.add(block);
     	
     	ArrayList<Transaction> block_txns= block.getTransactions();
     	for (int i=0; i < block_txns.size(); i++) {
