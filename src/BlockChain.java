@@ -20,44 +20,37 @@ public class BlockChain {
     }
 
     /** Get the maximum height block */
+    /**
+     * The height of a block is the number of blocks in the chain between it and the genesis block. 
+     * (So the genesis block has height 0.) The height of the block chain is usually taken to be the 
+     * height of the highest block, in the chain with greatest total difficulty; i.e. the length of 
+     * the chain minus one.
+     */
     public Block getMaxHeightBlock() {
-    	//If there are multiple blocks at the same height, return the oldest block 
-    	//With our blocks array therefore, lower index means earlier block!
+    	//For now assume just one chain of blocks
+    	return (Block) _blocks.lastElement();
     	
-    	//Inefficcient but ok for now:
-    	//Step1 find the max block height
-    	int maxBlockHeight= -1; //bcos if all blocks are empty, still need to return first block
-        for (int i= 0; i < _blocks.size(); i++) {
-        	Block b= (Block) _blocks.elementAt(i);
-        	int blockHeight= b.getTransactions().size();
-        	if (blockHeight > maxBlockHeight) maxBlockHeight= blockHeight;
-        }
-        
-        //Step2 find _the first_ [hence oldest!] block which have that max height
-        
-        for (int i= 0; i < _blocks.size(); i++) {
-        	Block b= (Block) _blocks.elementAt(i);
-        	int blockHeight= b.getTransactions().size();
-        	if (blockHeight == maxBlockHeight) {
-        		System.out.println("Found #getMaxHeightBlock blockHeight= " + maxBlockHeight);
-        		return b;
-        	}
-        }
-        
-        return null;
     }
 
     /** Get the UTXOPool for mining a new block on top of max height block */
+    /**
+     * Get all the txns in the globalTxnPool and set the unclaimed outputs
+     * into the utxo pool to be mined for the block
+     */
     public UTXOPool getMaxHeightUTXOPool() {
     	UTXOPool pool= new UTXOPool();
-    	ArrayList txns= getMaxHeightBlock().getTransactions();
+    	ArrayList txns= _globTxnPool.getTransactions();
     	for (int i=0; i < txns.size(); i++) {
     		Transaction txn= (Transaction) txns.get(i);
-    		ArrayList outputs= txn.getOutputs();
-    		for (int j=0; j < outputs.size(); j++) {
-    			Transaction.Output o= (Transaction.Output) outputs.get(j);
-    			UTXO utxo = new UTXO(txn.getHash(),j);
-    			pool.addUTXO(utxo, o);
+    		ArrayList inputs= txn.getInputs();
+    		for (int j=0; j < inputs.size(); j++) {
+    			Transaction.Input ii= (Transaction.Input) inputs.get(j);
+    			UTXO utxo = new UTXO(ii.prevTxHash, ii.outputIndex);
+    	   		ArrayList outputs= txn.getOutputs();
+        		for (int k=0; k < outputs.size(); k++) {
+        			Transaction.Output o= (Transaction.Output) outputs.get(k);
+        			pool.addUTXO(utxo, o);
+        		}
     		}
     	}
     	
