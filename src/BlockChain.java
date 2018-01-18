@@ -45,6 +45,7 @@ public class BlockChain {
     		ArrayList inputs= txn.getInputs();
     		for (int j=0; j < inputs.size(); j++) {
     			Transaction.Input ii= (Transaction.Input) inputs.get(j);
+    			System.out.println("Tx#" + txn.hashCode() + " input index=" + ii.outputIndex);
     			UTXO utxo = new UTXO(ii.prevTxHash, ii.outputIndex);
     	   		ArrayList outputs= txn.getOutputs();
         		for (int k=0; k < outputs.size(); k++) {
@@ -78,6 +79,8 @@ public class BlockChain {
      * @return true if block is successfully added
      */
     public boolean addBlock(Block block) {
+    	if (block == null) return false;
+    	
         // A new genesis block wont be mined. If you receive a block which claims to be a genesis block
     	//(parent is a null hash) in the addBlock(Block b) function, you can return false .
     	if (block.getPrevBlockHash() == null) {
@@ -85,13 +88,14 @@ public class BlockChain {
     		return false;
     	}
     	
-    	_blocks.add(block);
-    	
     	ArrayList<Transaction> block_txns= block.getTransactions();
     	for (int i=0; i < block_txns.size(); i++) {
     		Transaction block_txn= block.getTransaction(i);
     		_globTxnPool.removeTransaction(block_txn.getHash());
     	}
+    	
+    	_blocks.add(block);
+    	
     	return true;
     }
 
