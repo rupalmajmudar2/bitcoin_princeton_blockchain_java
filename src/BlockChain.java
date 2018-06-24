@@ -99,26 +99,28 @@ public class BlockChain {
     	}
     	
     	//Check that the prevHash block is indeed available
+    	Block prevBlock= null;
     	byte[] prevHash= block.getPrevBlockHash();
     	boolean found=false;
     	for (int k=0; k < _blocks.size(); k++) {
     		Block bk= (Block) _blocks.get(k);
     		if (bk.getHash() == prevHash) {
     			found=true;
+    			prevBlock= bk;
     		}
     	}
     	if (!found) {
     		return false;
     	}
     	
-    	TxHandler txHandler= new TxHandler( getUtxoPoolForBlock(block) );
+    	TxHandler txHandler= new TxHandler( getUtxoPoolForBlock(prevBlock) ); //note! (pinched) block) );
     	ArrayList<Transaction> block_txns= block.getTransactions();
     	System.out.println("#addBlock : Block=" + block.hashCode() + " has " + block_txns.size() + " Txns");
         Transaction[] txs = block.getTransactions().toArray(new Transaction[0]);
-        /*Transaction[] validTxs = txHandler.handleTxs(txs);
+        Transaction[] validTxs = txHandler.handleTxs(txs);
         if (validTxs.length != txs.length) {
             return false;
-        }*/
+        }
     	/*for (int i=0; i < block_txns.size(); i++) {
     		Transaction block_txn= block.getTransaction(i);
     		//if (!txHandler.isValidTx(block_txn)) return false;
