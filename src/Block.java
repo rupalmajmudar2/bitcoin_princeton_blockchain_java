@@ -4,6 +4,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.util.ArrayList;
 
+//
 public class Block {
 
     public static final double COINBASE = 25;
