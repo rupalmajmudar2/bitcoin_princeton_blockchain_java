@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Vector;
 
 // Block Chain should maintain only limited block nodes to satisfy the functions
@@ -9,6 +10,7 @@ public class BlockChain {
     public static final int CUT_OFF_AGE = 10;
 
     private Vector _blocks= new Vector(); //We'll have max 20 block nodes
+    private HashMap _poolsForBlocks= new HashMap();
     private TransactionPool _globTxnPool= new TransactionPool();
     
     /**
@@ -16,9 +18,22 @@ public class BlockChain {
      * block
      */
     public BlockChain(Block genesisBlock) {
+    	UTXOPool utxoPool= new UTXOPool();
+    	_poolsForBlocks.put(genesisBlock.hashCode(),  utxoPool);
+    	addCoinbaseToUTXOPool(genesisBlock, utxoPool);
     	_blocks.add(genesisBlock);
     }
 
+    //pinched
+    private void addCoinbaseToUTXOPool(Block block, UTXOPool utxoPool) {
+        Transaction coinbase = block.getCoinbase();
+        for (int i = 0; i < coinbase.numOutputs(); i++) {
+            Transaction.Output out = coinbase.getOutput(i);
+            UTXO utxo = new UTXO(coinbase.getHash(), i);
+            utxoPool.addUTXO(utxo, out);
+        }
+    }
+    
     /** Get the maximum height block */
     /**
      * The height of a block is the number of blocks in the chain between it and the genesis block. 
@@ -38,26 +53,21 @@ public class BlockChain {
      * into the utxo pool to be mined for the block
      */
     public UTXOPool getMaxHeightUTXOPool() {
-    	UTXOPool pool= new UTXOPool();
-    	ArrayList txns= _globTxnPool.getTransactions();
-    	for (int i=0; i < txns.size(); i++) {
-    		Transaction txn= (Transaction) txns.get(i);
-    		ArrayList inputs= txn.getInputs();
-    		for (int j=0; j < inputs.size(); j++) {
-    			Transaction.Input ii= (Transaction.Input) inputs.get(j);
-    			System.out.println("Tx#" + txn.hashCode() + " input index=" + ii.outputIndex);
-    			UTXO utxo = new UTXO(ii.prevTxHash, ii.outputIndex);
-    	   		ArrayList outputs= txn.getOutputs();
-        		for (int k=0; k < outputs.size(); k++) {
-        			Transaction.Output o= (Transaction.Output) outputs.get(k);
-        			pool.addUTXO(utxo, o);
-        		}
-    		}
-    	}
+    	Block mhBlock= getMaxHeightBlock();
+    	System.out.println("#getMaxHeightUTXOPool: mhBlock=" + mhBlock.hashCode());
     	
-    	return pool;
+    	return getUtxoPoolForBlock( mhBlock );
     }
 
+    private UTXOPool getUtxoPoolForBlock(Block block) {
+    	UTXOPool pool= (UTXOPool) _poolsForBlocks.get(block.hashCode());
+    	if (pool == null) {
+    		_poolsForBlocks.put(block.hashCode(),  new UTXOPool());
+    	}
+    	
+    	return (UTXOPool) _poolsForBlocks.get(block.hashCode());
+    }
+    
     /** Get the transaction pool to mine a new block */
     public TransactionPool getTransactionPool() {
     	return _globTxnPool;
@@ -101,7 +111,20 @@ public class BlockChain {
     		return false;
     	}
     	
+    	TxHandler txHandler= new TxHandler( getUtxoPoolForBlock(block) );
     	ArrayList<Transaction> block_txns= block.getTransactions();
+    	System.out.println("#addBlock : Block=" + block.hashCode() + " has " + block_txns.size() + " Txns");
+        Transaction[] txs = block.getTransactions().toArray(new Transaction[0]);
+        /*Transaction[] validTxs = txHandler.handleTxs(txs);
+        if (validTxs.length != txs.length) {
+            return false;
+        }*/
+    	/*for (int i=0; i < block_txns.size(); i++) {
+    		Transaction block_txn= block.getTransaction(i);
+    		//if (!txHandler.isValidTx(block_txn)) return false;
+    	}*/
+        addCoinbaseToUTXOPool(block, getUtxoPoolForBlock(block));
+        
     	for (int i=0; i < block_txns.size(); i++) {
     		Transaction block_txn= block.getTransaction(i);
     		_globTxnPool.removeTransaction(block_txn.getHash());
@@ -118,7 +141,31 @@ public class BlockChain {
 		it on receiving transactions and remove transactions from it if a new block is received or
 		created.
      */
-    public void addTransaction(Transaction tx) {
-    	_globTxnPool.addTransaction(tx);
+    public void addTransaction(Transaction txn) {
+    	_globTxnPool.addTransaction(txn);
+    	//for (int i=0; i < txns.size(); i++) {
+    		//Transaction txn= (Transaction) txns.get(i);
+    	UTXOPool  pool= getMaxHeightUTXOPool();
+    		ArrayList outputs= txn.getOutputs();
+			for (int j=0; j < outputs.size(); j++) {
+				Transaction.Output o= (Transaction.Output) outputs.get(j);
+				UTXO utxo = new UTXO(txn.getHash(),j);
+				pool.addUTXO(utxo, o);
+				System.out.println("#getMaxHeightUTXOPool: addUTXO Value=" + o.value + " at index=" + j + " to txn=" + txn.hashCode());
+				System.out.println("UTXO Pool now has: " + pool.getAllUTXO().size() + " Elements");
+			}
+			
+	    	//We've added the new unclaimed txns (UTXOs) - we should remove the earlier ones!
+			ArrayList inputs= txn.getInputs();
+			for (int j=0; j < inputs.size(); j++) {
+				Transaction.Input ii= (Transaction.Input) inputs.get(j);
+				UTXO ut= new UTXO(ii.prevTxHash, ii.outputIndex);
+				Transaction.Output txOut= pool.getTxOutput(ut);
+				if (txOut != null) {
+					pool.removeUTXO(ut);
+					System.out.println("getMaxHeightUTXOPool: removedUTXO Value=" + txOut.value + " at index=" + ii.outputIndex + " from txn=" + txn.hashCode());
+				}
+			}
+    	//}
     }
 }
